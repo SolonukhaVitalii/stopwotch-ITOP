@@ -2,25 +2,16 @@ import React, {
   useCallback,
   useEffect,
   useState,
-  useMemo,
 } from 'react';
-import { Observable, Subject } from 'rxjs';
-import {
-  map,
-  buffer,
-  debounceTime,
-  filter,
-  takeUntil,
-} from 'rxjs/operators';
+import { Observable } from 'rxjs';
+
 
 import { Controls } from './components/Controls';
 
 const App = () => {
   const [state, setState] = useState('stop');
   const [time, setTime] = useState(0);
-
-  const stop$ = useMemo(() => new Subject(), []);
-  const click$ = useMemo(() => new Subject(), []);
+  const [isWait, setWait] = useState(false)
 
   const start = () => {
     setState('start');
@@ -36,17 +27,16 @@ const App = () => {
   }, []);
 
   const wait = useCallback(() => {
-    click$.next();
-    setState('wait');
-    click$.next();
-  }, []);
+    if (isWait) {
+      setState('wait');
+    }
+    else {
+      setTimeout(() => setWait(false), 300)
+      setWait(true)
+    }
+  }, [isWait]);
 
   useEffect(() => {
-    const onDoubleClick$ = click$.pipe(
-      buffer(click$.pipe(debounceTime(300))),
-      map((list) => list.length),
-      filter((value) => value >= 2),
-    );
     const timer$ = new Observable((observer) => {
       let count = 0;
       const intervalId = setInterval(() => {
@@ -59,8 +49,6 @@ const App = () => {
     });
 
     const subscribtion$ = timer$
-      .pipe(takeUntil(onDoubleClick$))
-      .pipe(takeUntil(stop$))
       .subscribe({
         next: () => {
           if (state === 'start') {
